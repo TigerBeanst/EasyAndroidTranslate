@@ -1,2 +1,2 @@
 # EasyAndroidTranslate
-A tool for easy translate app
+A tool for you to translate app easily
