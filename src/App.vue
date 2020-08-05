@@ -193,7 +193,7 @@ export default {
       if (this.strings.length === 0) {
         this.$message.error('No translated text');
       } else {
-        this.final_strings += "<resources>\n";
+        this.final_strings = "<resources>\n";
         for (let index = 0; index < this.strings.length; index++) {
           if (!(this.strings[index].value_translated === "") && !(this.strings[index].value_translated === undefined)) {
             this.final_strings += "    <string name=\"" + this.strings[index].key + "\">" + this.strings[index].value_translated + "</string>\n";
