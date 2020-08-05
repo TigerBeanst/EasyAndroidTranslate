@@ -29,14 +29,31 @@
       <div id="input_button">
         <el-button type="primary" @click="start_button">Start Translating</el-button>
         <el-button type="primary" @click="update_button">Update Translation</el-button>
+        <el-button type="success" @click="gen_button">Generate Strings</el-button>
       </div>
     </el-form>
+    <el-dialog
+        title="Finished"
+        :visible.sync="dialogVisible"
+        width="30%"
+        :before-close="handleClose">
+      <el-input
+          type="textarea"
+          :rows="15"
+          v-model="final_strings">
+      </el-input>
+      <span slot="footer" class="dialog-footer">
+        <el-button v-clipboard="()=>this.final_strings" v-clipboard:success="clipboardSuccessHandler">Copy</el-button>
+        <el-button type="primary" @click="dialogVisible = false">OK</el-button>
+      </span>
+    </el-dialog>
     <div id="table">
       <el-table
-          ref="singleTable"
+          ref="stringsTable"
           :data="strings"
           highlight-current-row
           @row-click="handleCurrentChange"
+          :row-class-name="tableRowClassName"
           style="width: 100%">
         <el-table-column
             type="index"
@@ -78,12 +95,13 @@
 export default {
   data() {
     return {
+      final_strings: "",
       strings: [],
       activeIndex: '1',
       source_form: '',
       translated_form: '',
       pre_source_form: '',
-      loading: false
+      dialogVisible: false,
     }
   },
   methods: {
@@ -97,15 +115,15 @@ export default {
         if (m.index === regex.lastIndex) {
           regex.lastIndex++;
         }
+        // eslint-disable-next-line no-unused-vars
         m.forEach((match, groupIndex) => {
-          groupIndex;
           if (n === 0) {
             arr['origin'] = match;
           } else if (n === 1) {
             arr['key'] = match;
-            arr['value_source'] = this.getValue(match,this.source_form)
-            if(isUpdated){
-              arr['value_translated'] = this.getValue(match,this.translated_form)
+            arr['value_source'] = this.getValue(match, this.source_form)
+            if (isUpdated) {
+              arr['value_translated'] = this.getValue(match, this.translated_form)
             }
             this.strings.push(arr);
           }
@@ -113,9 +131,9 @@ export default {
         });
       }
     },
-    getValue(key,content_xml) {
+    getValue(key, content_xml) {
       //const regex = /<string name="key">(.*?)<\/string>/gm;
-      let regexS = "<string name=\""+key+"\">(.*?)<\\/string>"
+      let regexS = "<string name=\"" + key + "\">(.*?)<\\/string>"
       const regex = new RegExp(regexS, "gm");
       let matchS = ""
       let m;
@@ -126,19 +144,28 @@ export default {
         if (m.index === regex.lastIndex) {
           regex.lastIndex++;
         }
+        // eslint-disable-next-line no-unused-vars
         m.forEach((match, groupIndex) => {
-          groupIndex;
-           if (n === 1) {
-             // console.log("match:"+match+" // index:"+groupIndex)
-             matchS = match
+          if (n === 1) {
+            // console.log("match:"+match+" // index:"+groupIndex)
+            matchS = match
           }
           n++;
         });
       }
       return matchS
     },
+    // eslint-disable-next-line no-unused-vars
+    tableRowClassName({row, rowIndex}) {
+      if (row.value_translated === "") {
+        return 'danger-row';
+      } else if (row.value_translated === row.value_source) {
+        return 'warning-row'
+      }
+      return '';
+    },
     start_button() {
-      if (this.source_form == "") {
+      if (this.source_form === "") {
         this.$message.error('Do not leave the "Source strings.XML" form empty');
       } else {
         this.strings = [];
@@ -155,7 +182,30 @@ export default {
         this.getKey(true)
         //this.getValue(this.source_form)
         console.log(this.strings)
+        this.$notify({
+          title: 'Notices',
+          message: 'Yellow items: The translated text is the same as the source text\nRed items: not translated',
+          duration: 0
+        });
       }
+    },
+    gen_button() {
+      if (this.strings.length === 0) {
+        this.$message.error('No translated text');
+      } else {
+        this.final_strings += "<resources>\n";
+        for (let index = 0; index < this.strings.length; index++) {
+          if (!(this.strings[index].value_translated === "")) {
+            this.final_strings += "    <string name=\"" + this.strings[index].key + "\">" + this.strings[index].value_translated + "</string>\n";
+          }
+        }
+        this.final_strings += "</resources>";
+        console.log(this.final_strings)
+        this.dialogVisible = true;
+      }
+    },
+    clipboardSuccessHandler() {
+      this.$message.success("Copy success")
     },
     open_source() {
       const h = this.$createElement;
@@ -171,8 +221,18 @@ export default {
         message: h('b', {style: 'color: teal'}, 'You can paste strings.xml that you\'ve translated before, and use it to check if the source strings.xml updated.')
       });
     },
+    handleClose(done) {
+      this.$confirm('Close?')
+          // eslint-disable-next-line no-unused-vars
+          .then(_ => {
+            done();
+          })
+          // eslint-disable-next-line no-unused-vars
+          .catch(_ => {
+          });
+    },
     handleCurrentChange(row, event, column) {
-      console.log(row, event, column, event.currentTarget)
+      console.log(row, event, column)
     },
     handleEdit(index, row) {
       console.log(index, row);
@@ -192,6 +252,14 @@ export default {
   color: #2c3e50;
   margin: 0 auto;
   width: 80%;
+}
+
+.el-table .warning-row {
+  background: oldlace;
+}
+
+.el-table .danger-row {
+  background: #fef0f0;
 }
 
 #input_form, #input_button {
